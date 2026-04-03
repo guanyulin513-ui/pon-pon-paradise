@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>崩崩樂園 - Boom Boom Park</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 引入 Matter.js 物理引擎 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+</head>
+<body>
+    <div id="game-container">
+        <!-- 上方資訊欄 -->
+        <div id="top-ui" class="glass-panel">
+            <div class="stat-item">
+                <span class="label">關卡</span>
+                <span id="level-num">1</span>
+            </div>
+            <div class="stat-item">
+                <span class="label">彈藥</span>
+                <span id="ammo-count">5</span>
+            </div>
+            <div class="stat-item" style="flex-grow: 1;">
+                <span class="label">摧毀率</span>
+                <div class="progress-bar">
+                    <div id="destroy-progress" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="game-canvas"></canvas>
+
+        <!-- 下方控制區 -->
+        <div id="bottom-ui">
+            <div class="weapon-selector glass-panel">
+                <button class="weapon-btn active" data-type="normal">
+                    <div class="bullet-icon normal"></div>
+                    <span>普通</span>
+                </button>
+                <button class="weapon-btn" data-type="heavy">
+                    <div class="bullet-icon heavy"></div>
+                    <span>重擊</span>
+                </button>
+                <button class="weapon-btn" data-type="blast">
+                    <div class="bullet-icon blast"></div>
+                    <span>爆裂</span>
+                </button>
+            </div>
+            <button id="mute-btn" class="glass-panel">🔊</button>
+        </div>
+
+        <!-- 遊戲訊息提示 -->
+        <div id="overlay" class="overlay hidden">
+            <div class="glass-panel modal">
+                <h1 id="overlay-title">崩崩樂園</h1>
+                <p id="overlay-desc">拖拽發射，摧毀建築！</p>
+                <button id="start-btn" class="main-btn">開始遊戲</button>
+            </div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
