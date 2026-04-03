@@ -3,264 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>崩崩樂園 - 繪本深度版</title>
+    <title>崩崩樂園 - 純直式舒壓版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root {
-            --sky-top: #A2D2FF;
-            --sky-bottom: #D0EBFF;
-            --grass: #95D5B2;
-            --ui-bg: rgba(255, 255, 255, 0.88);
+            --sky: linear-gradient(to bottom, #A2D2FF 0%, #D0EBFF 100%);
             --accent: #FFB7B2;
-        }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--sky-top); font-family: system-ui, sans-serif; }
-        
-        #game-container { 
-            position: relative; width: 100vw; height: 100vh; 
-            background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 100%);
+            --ui-white: rgba(255, 255, 255, 0.9);
         }
 
-        /* 增強層次的山脈 */
-        .mountain { position: absolute; bottom: 0; border-radius: 50% 50% 0 0; }
-        .m-back { width: 120%; height: 60%; left: -10%; background: #7FB0A0; opacity: 0.4; bottom: 40px; }
-        .m-mid { width: 100%; height: 45%; left: 10%; background: #5D9B84; opacity: 0.6; bottom: 20px; box-shadow: inset 0 20px 30px rgba(255,255,255,0.1); }
-        .m-front { width: 110%; height: 30%; left: -5%; background: #40816A; opacity: 0.8; bottom: 0; border: 2px solid rgba(255,255,255,0.1); }
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background: #A2D2FF;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
 
-        canvas { position: absolute; top: 0; left: 0; z-index: 5; touch-action: none; background: transparent; }
+        /* 旋轉提示遮罩 */
+        #orientation-overlay {
+            position: fixed; inset: 0; background: #333; color: white;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000; text-align: center; padding: 20px;
+        }
+
+        @media screen and (orientation: landscape) {
+            #orientation-overlay { display: flex; }
+        }
+
+        #game-container {
+            position: relative; width: 100vw; height: 100vh;
+            background: var(--sky); overflow: hidden;
+        }
+
+        canvas { display: block; touch-action: none; z-index: 5; position: relative; }
 
         /* UI */
-        .ui { position: absolute; background: var(--ui-bg); backdrop-filter: blur(12px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 8px 32px rgba(0,0,0,0.08); z-index: 10; }
-        #top-bar { top: 20px; left: 50%; transform: translateX(-50%); width: 280px; height: 55px; display: flex; align-items: center; justify-content: space-around; }
-        #side-bar { left: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; padding: 15px; }
-        
-        .stat-item { display: flex; flex-direction: column; align-items: center; }
-        .stat-label { font-size: 10px; font-weight: bold; opacity: 0.4; letter-spacing: 1px; }
-        .stat-val { font-size: 22px; font-weight: 800; color: #444; }
+        .ui { position: absolute; background: var(--ui-white); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 8px 32px rgba(0,0,0,0.1); z-index: 100; }
+        #hud { top: 20px; left: 50%; transform: translateX(-50%); width: 85%; height: 60px; display: flex; align-items: center; justify-content: space-around; }
+        #toolbar { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 12px; }
 
-        .btn { width: 60px; height: 60px; border-radius: 18px; border: 2px solid transparent; background: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; }
-        .btn.active { border-color: var(--accent); transform: scale(1.1); box-shadow: 0 4px 15px rgba(255,183,178,0.4); }
-        .btn-dot { border-radius: 50%; margin-bottom: 2px; }
+        .stat-group { display: flex; flex-direction: column; align-items: center; }
+        .stat-label { font-size: 10px; font-weight: bold; opacity: 0.5; letter-spacing: 1px; }
+        .stat-value { font-size: 20px; font-weight: 800; color: #444; }
 
-        #overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        .modal { padding: 40px; text-align: center; width: 320px; }
-        .start-btn { background: var(--accent); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; box-shadow: 0 10px 20px rgba(255,183,178,0.3); }
+        .weapon-btn { width: 60px; height: 60px; border-radius: 18px; border: 3px solid transparent; background: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; }
+        .weapon-btn.active { border-color: var(--accent); transform: scale(1.1); }
+        .weapon-dot { border-radius: 50%; margin-bottom: 4px; }
+
+        #msg-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
+        .modal { padding: 40px; text-align: center; width: 280px; }
+        .btn-start { background: var(--accent); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; }
         .hidden { display: none !important; }
-        
-        #progress-bg { width: 80px; height: 10px; background: #EEE; border-radius: 5px; overflow: hidden; margin-top: 5px; }
-        #progress-fill { height: 100%; background: #B5EAD7; width: 0%; transition: width 0.3s; }
+
+        #progress-bg { width: 100px; height: 10px; background: #E9ECEF; border-radius: 5px; overflow: hidden; }
+        #progress-bar { height: 100%; background: #95D5B2; width: 0%; transition: width 0.3s; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div class="mountain m-back"></div>
-    <div class="mountain m-mid"></div>
-    <div class="mountain m-front"></div>
+<!-- 橫向提示 -->
+<div id="orientation-overlay">
+    <div style="font-size: 40px;">🔄</div>
+    <h2>請旋轉至直式模式</h2>
+    <p>崩崩樂園僅支援直立遊玩以獲得最佳舒壓體驗</p>
+</div>
 
-    <div id="top-bar" class="ui">
-        <div class="stat-item"><span class="stat-label">LEVEL</span><span id="lv-ui" class="stat-val">1</span></div>
-        <div class="stat-item"><span class="stat-label">AMMO</span><span id="am-ui" class="stat-val">8</span></div>
-        <div class="stat-item">
-            <span class="stat-label">DESTRUCTION</span>
-            <div id="progress-bg"><div id="progress-fill"></div></div>
+<div id="game-container">
+    <div id="hud" class="ui">
+        <div class="stat-group"><span class="stat-label">關卡</span><span id="ui-lv" class="stat-value">1</span></div>
+        <div class="stat-group"><span class="stat-label">彈藥</span><span id="ui-am" class="stat-value">8</span></div>
+        <div class="stat-group">
+            <span class="stat-label">進度</span>
+            <div id="progress-bg"><div id="progress-bar"></div></div>
         </div>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <canvas id="canvas"></canvas>
 
-    <div id="side-bar" class="ui">
-        <div class="btn active" onclick="changeWp('normal', this)"><div class="btn-dot" style="width:12px; height:12px; background:#FFB7B2"></div><span style="font-size:10px">普通</span></div>
-        <div class="btn" onclick="changeWp('heavy', this)"><div class="btn-dot" style="width:20px; height:20px; background:#A2CFFE"></div><span style="font-size:10px">重擊</span></div>
-        <div class="btn" onclick="changeWp('blast', this)"><div class="btn-dot" style="width:16px; height:16px; background:#FFDAC1; border:1px dashed #E5A186"></div><span style="font-size:10px">爆裂</span></div>
+    <div id="toolbar" class="ui">
+        <button class="weapon-btn active" onclick="setWp('normal', this)">
+            <div class="weapon-dot" style="width:12px; height:12px; background:#FFB7B2"></div><span style="font-size:10px">普通</span>
+        </button>
+        <button class="weapon-btn" onclick="setWp('heavy', this)">
+            <div class="weapon-dot" style="width:20px; height:20px; background:#A2CFFE"></div><span style="font-size:10px">重擊</span>
+        </button>
+        <button class="weapon-btn" onclick="setWp('blast', this)">
+            <div class="weapon-dot" style="width:16px; height:16px; background:#FFDAC1; border:1px dashed #E5A186"></div><span style="font-size:10px">爆裂</span>
+        </button>
     </div>
 
-    <div id="overlay">
+    <div id="msg-overlay">
         <div class="ui modal">
-            <h2 style="margin:0 0 10px 0; color:#444;">崩崩樂園</h2>
-            <p style="font-size:14px; color:#777; line-height:1.6;">物理連鎖倒塌實驗室<br>擊碎支撐點，看著建築瓦解</p>
-            <button class="start-btn" onclick="handleStart()">進入挑戰</button>
+            <h2 style="margin:0; color:#444;">崩崩樂園</h2>
+            <p style="font-size:14px; color:#777; margin: 15px 0;">從左側發射，摧毀右方的塔！<br>物理連鎖破壞，極度舒壓。</p>
+            <button class="btn-start" onclick="gameStart()">開始挑戰</button>
         </div>
     </div>
 </div>
 
 <script>
-const { Engine, World, Bodies, Composite, Vector, Body, Runner } = Matter;
+const { Engine, World, Bodies, Composite, Vector, Body, Runner, Events } = Matter;
 
-let engine, canvas, ctx, audioCtx, ground;
+let engine, runner, canvas, ctx, audioCtx;
 let W, H, ammo = 8, level = 1, weapon = 'normal';
 let isDragging = false, dragE = {x:0, y:0};
 let totalBlocks = 0, destroyedCount = 0;
 let dyingBodies = [], particles = [];
 
+// 固定發射點 (直式模式下左側 1/4)
 const launcherPos = { x: 0, y: 0 };
-const groundH = 80;
+const groundH = 120;
 
 function init() {
-    canvas = document.getElementById('gameCanvas');
+    canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
     
+    // 物理引擎高精度設定
     engine = Engine.create();
-    engine.world.gravity.y = 1.3;
+    engine.positionIterations = 10; // 增加碰撞檢測精度
+    engine.velocityIterations = 10;
+    
     runner = Runner.create();
     Runner.run(runner, engine);
 
     resize();
     window.addEventListener('resize', resize);
-
     loop();
-    setupInputs();
+    setupControls();
 }
 
 function resize() {
+    // 強制維持直式比例邏輯
     W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
     
-    // 更新發射台位置 (1/4 寬度)
     launcherPos.x = W * 0.25;
-    launcherPos.y = H - groundH - 40;
+    launcherPos.y = H * 0.75; // 發射點位於中下方左側
 
-    // 動態更新地面位置，不刪除原有物體
-    if (ground) World.remove(engine.world, ground);
-    ground = Bodies.rectangle(W/2, H - groundH/2, W * 2, groundH, { isStatic: true });
-    ground.render.fill = '#95D5B2';
-    World.add(engine.world, ground);
+    // 更新地面
+    resetGround();
 }
 
-/** 音頻系統 **/
+function resetGround() {
+    if(window.groundObj) World.remove(engine.world, window.groundObj);
+    window.groundObj = Bodies.rectangle(W/2, H - groundH/2, W * 2, groundH, { 
+        isStatic: true, 
+        friction: 0.5 
+    });
+    World.add(engine.world, window.groundObj);
+}
+
+/** 音效 **/
 function initAudio() {
-    if (audioCtx) return;
+    if(audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const notes = [261.63, 329.63, 392.00, 440.00, 523.25];
+    // BGM: 溫柔的五聲循環
+    const notes = [261.6, 329.6, 392.0, 440.0];
+    let i = 0;
     setInterval(() => {
-        if (audioCtx.state === 'suspended') return;
-        const note = notes[Math.floor(Math.random()*notes.length)];
-        playTone(note, 0.6, 'sine', 0.03);
-    }, 1200);
+        if(audioCtx.state === 'running') playTone(notes[i++%4], 0.6, 0.02);
+    }, 1000);
 }
 
-function playTone(freq, dur, type, vol) {
-    const osc = audioCtx.createOscillator();
+function playTone(f, d, v) {
+    const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    g.gain.setValueAtTime(vol, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-    osc.connect(g); g.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + dur);
+    o.frequency.value = f;
+    g.gain.setValueAtTime(v, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + d);
 }
 
-function playSFX(type) {
-    if(!audioCtx) return;
-    if(type === 'shoot') playTone(500, 0.2, 'triangle', 0.1);
-    if(type === 'hit') playTone(200, 0.1, 'sine', 0.15);
-    if(type === 'blast') { playTone(60, 0.6, 'sawtooth', 0.4); playTone(40, 0.6, 'sine', 0.4); }
-}
-
-/** 遊戲功能 **/
-function handleStart() {
-    initAudio();
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-    document.getElementById('overlay').classList.add('hidden');
-    setupLevel();
-}
-
-function setupLevel() {
-    // 只清除積木與子彈，保留地面
-    const allBodies = Composite.allBodies(engine.world);
-    allBodies.forEach(b => { if(!b.isStatic) World.remove(engine.world, b); });
-
-    dyingBodies = []; particles = [];
-    destroyedCount = 0;
-    ammo = 8 + Math.floor(level/2);
-    updateUI();
-
-    const buildingX = W * 0.75;
-    const bW = 34, bH = 34;
-    const colors = ['#B5EAD7', '#FFDAC1', '#E2F0CB', '#C7CEEA', '#FFB7B2'];
-    
-    let cols = level === 1 ? 1 : 2;
-    let rows = 4 + level;
-    if(rows > 12) rows = 12;
-
-    for(let r=0; r<rows; r++) {
-        for(let c=0; c<cols; c++) {
-            let x = buildingX - ((cols-1)*bW/2) + (c*(bW+2));
-            let y = (H - groundH) - (bH/2) - (r*(bH+1));
-            let box = Bodies.rectangle(x, y, bW, bH, {
-                restitution: 0.1, friction: 0.8, frictionStatic: 1.0,
-                render: { fill: colors[Math.floor(Math.random()*colors.length)] }
-            });
-            box.isBlock = true;
-            World.add(engine.world, box);
-        }
-    }
-    totalBlocks = Composite.allBodies(engine.world).filter(b => b.isBlock).length;
-}
-
+/** 遊戲循環 **/
 function loop() {
+    // 物理步進優化：增加子步數防止穿透
+    for(let i=0; i<2; i++) Engine.update(engine, 1000/120);
+
     ctx.clearRect(0, 0, W, H);
+    drawBackground();
 
-    // 1. 繪製發射台 (更優雅的視覺)
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.beginPath(); ctx.arc(launcherPos.x, launcherPos.y, 30, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = varColor('--accent');
-    ctx.beginPath(); ctx.arc(launcherPos.x, launcherPos.y, 8, 0, Math.PI*2); ctx.fill();
+    // 繪製發射台視覺
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.beginPath(); ctx.arc(launcherPos.x, launcherPos.y, 35, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#FFB7B2";
+    ctx.beginPath(); ctx.arc(launcherPos.x, launcherPos.y, 10, 0, Math.PI*2); ctx.fill();
 
-    // 2. 瞄準軌跡
+    // 瞄準虛線
     if(isDragging) {
         const dx = launcherPos.x - dragE.x, dy = launcherPos.y - dragE.y;
         ctx.setLineDash([5, 5]);
         ctx.strokeStyle = "rgba(0,0,0,0.1)";
         ctx.beginPath(); ctx.moveTo(launcherPos.x, launcherPos.y); ctx.lineTo(dragE.x, dragE.y); ctx.stroke();
         ctx.setLineDash([]);
-        
-        ctx.strokeStyle = "rgba(255,183,178,0.6)";
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(255,183,178,0.6)"; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.moveTo(launcherPos.x, launcherPos.y);
         ctx.lineTo(launcherPos.x + dx, launcherPos.y + dy); ctx.stroke();
     }
 
-    // 3. 繪製物體
+    // 繪製物體
     const bodies = Composite.allBodies(engine.world);
     bodies.forEach(b => {
-        if(b.isStatic && b.position.y > H) return;
+        if(b.isStatic && b.position.y > H - 20) return;
         ctx.save();
         ctx.translate(b.position.x, b.position.y);
         ctx.rotate(b.angle);
-        ctx.fillStyle = b.render.fill || '#DDD';
+        ctx.fillStyle = b.render.fillStyle || '#DDD';
         ctx.globalAlpha = b.opacity || 1;
         
-        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.04)"; ctx.shadowOffsetY = 4;
+        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.05)"; ctx.shadowOffsetY = 4;
 
         if(b.circleRadius) {
             ctx.beginPath(); ctx.arc(0, 0, b.circleRadius, 0, Math.PI*2); ctx.fill();
         } else {
             const w = b.bounds.max.x - b.bounds.min.x, h = b.bounds.max.y - b.bounds.min.y;
-            const r = 6; // 圓角
-            ctx.beginPath();
-            ctx.moveTo(-w/2+r, -h/2); ctx.lineTo(w/2-r, -h/2); ctx.quadraticCurveTo(w/2, -h/2, w/2, -h/2+r);
-            ctx.lineTo(w/2, h/2-r); ctx.quadraticCurveTo(w/2, h/2, w/2-r, h/2);
-            ctx.lineTo(-w/2+r, h/2); ctx.quadraticCurveTo(-w/2, h/2, -w/2, h/2-r);
-            ctx.lineTo(-w/2, -h/2+r); ctx.quadraticCurveTo(-w/2, -h/2, -w/2+r, -h/2);
-            ctx.fill();
+            drawRoundRect(ctx, -w/2, -h/2, w, h, 6);
         }
         ctx.restore();
 
-        // 4. 改進的判定與擊打反應
+        // 判定判定摧毀
         if(!b.isStatic && b.isBlock && !b.isDying) {
-            // 判定條件：位移大於一定距離才算摧毀
-            if(Math.abs(b.position.x - (W*0.75)) > 60 || b.position.y > H - groundH + 5) {
-                b.isDying = true;
-                destroyedCount++;
-                dyingBodies.push(b);
-                updateUI();
-                playSFX('hit');
-                if(destroyedCount/totalBlocks >= 0.8) setTimeout(() => checkEnd(true), 800);
+            const hasMoved = Math.abs(b.position.x - (W*0.75)) > 60 || b.position.y > H - groundH + 10;
+            if(hasMoved) {
+                b.isDying = true; destroyedCount++; dyingBodies.push(b);
+                updateProgress();
+                if(destroyedCount/totalBlocks >= 0.8) setTimeout(() => checkEnd(true), 1000);
             }
         }
     });
 
-    // 消逝處理 (現在方塊在完全消失前仍保留物理屬性，避免子彈穿透)
+    // 漸變消失
     for(let i=dyingBodies.length-1; i>=0; i--) {
         let b = dyingBodies[i]; b.opacity = (b.opacity || 1) - 0.02;
         if(b.opacity <= 0) { World.remove(engine.world, b); dyingBodies.splice(i, 1); }
@@ -270,43 +241,69 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
-function setupInputs() {
+function drawBackground() {
+    // 繪製三層遠山
+    const colors = ['#7FB0A0', '#5D9B84', '#40816A'];
+    [0.4, 0.6, 0.8].forEach((op, i) => {
+        ctx.fillStyle = colors[i]; ctx.globalAlpha = op;
+        ctx.beginPath();
+        ctx.arc(W * (i*0.3), H - groundH + 20, 150 + i*100, Math.PI, 0);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    // 地面
+    ctx.fillStyle = "#95D5B2";
+    ctx.fillRect(0, H - groundH, W, groundH);
+}
+
+function drawRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.fill();
+}
+
+/** 遊戲控制器 **/
+function setupControls() {
     const getP = (e) => {
         const r = canvas.getBoundingClientRect();
         return { x: (e.clientX || e.touches[0].clientX) - r.left, y: (e.clientY || e.touches[0].clientY) - r.top };
     };
-    const s = (e) => {
-        const p = getP(e);
-        if(p.x < W * 0.45) { isDragging = true; dragE = p; }
-    };
+    const s = (e) => { if(getP(e).x < W * 0.5) isDragging = true; };
     const m = (e) => { if(isDragging) dragE = getP(e); };
-    const end = () => { if(isDragging) { isDragging = false; fire(); } };
+    const e = () => { if(isDragging) { isDragging = false; fire(); } };
 
-    canvas.addEventListener('mousedown', s); window.addEventListener('mousemove', m); window.addEventListener('mouseup', end);
-    canvas.addEventListener('touchstart', s, {passive:false}); window.addEventListener('touchmove', m, {passive:false}); window.addEventListener('touchend', end);
+    canvas.addEventListener('mousedown', s); window.addEventListener('mousemove', m); window.addEventListener('mouseup', e);
+    canvas.addEventListener('touchstart', s, {passive:false}); window.addEventListener('touchmove', m, {passive:false}); window.addEventListener('touchend', e);
 }
 
 function fire() {
     if(ammo <= 0) return;
     const dx = launcherPos.x - dragE.x, dy = launcherPos.y - dragE.y;
     const dist = Vector.magnitude({x:dx, y:dy});
-    if(dist < 15) return;
+    if(dist < 20) return;
 
-    const fMag = Math.min(dist * 0.007, 0.28);
+    const fMag = Math.min(dist * 0.008, 0.35); // 增加力量上限
     const ang = Math.atan2(dy, dx);
-    let r=12, f='#FFB7B2', m=1;
-    if(weapon === 'heavy') { r=22; f='#A2CFFE'; m=6; }
-    if(weapon === 'blast') { f='#FFDAC1'; }
+    
+    // 子彈屬性調整：密度是撞擊力的關鍵
+    let r=14, f='#FFB7B2', density=0.01;
+    if(weapon === 'heavy') { r=24; f='#A2CFFE'; density=0.05; }
+    if(weapon === 'blast') { f='#FFDAC1'; density=0.008; }
 
     const bullet = Bodies.circle(launcherPos.x, launcherPos.y, r, { 
-        restitution: 0.5, mass: m, friction: 0.2,
-        collisionFilter: { category: 0x0002 } 
+        restitution: 0.4, 
+        density: density,
+        frictionAir: 0.001,
+        render: { fillStyle: f }
     });
-    bullet.render.fill = f;
+    
     World.add(engine.world, bullet);
-    Body.applyForce(bullet, bullet.position, { x: Math.cos(ang)*fMag*m, y: Math.sin(ang)*fMag*m });
+    Body.applyForce(bullet, bullet.position, { x: Math.cos(ang)*fMag*bullet.mass, y: Math.sin(ang)*fMag*bullet.mass });
 
-    ammo--; updateUI(); playSFX('shoot');
+    ammo--; updateUI(); playTone(400, 0.2, 0.1);
 
     if(weapon === 'blast') {
         setTimeout(() => {
@@ -314,32 +311,74 @@ function fire() {
             Composite.allBodies(engine.world).forEach(b => {
                 if(!b.isStatic) {
                     const d = Vector.magnitude(Vector.sub(b.position, bullet.position));
-                    if(d < 160) Body.applyForce(b, b.position, Vector.mult(Vector.normalise(Vector.sub(b.position, bullet.position)), 0.1));
+                    if(d < 180) Body.applyForce(b, b.position, Vector.mult(Vector.normalise(Vector.sub(b.position, bullet.position)), 0.15));
                 }
             });
             spawnParticles(bullet.position.x, bullet.position.y, f);
             World.remove(engine.world, bullet);
-            playSFX('blast');
+            playTone(100, 0.4, 0.3);
         }, 800);
     }
-    if(ammo === 0) setTimeout(() => { if(destroyedCount/totalBlocks < 0.8) checkEnd(false); }, 5000);
+}
+
+/** 關卡管理 **/
+function gameStart() {
+    initAudio();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    document.getElementById('msg-overlay').classList.add('hidden');
+    loadLevel();
+}
+
+function loadLevel() {
+    const all = Composite.allBodies(engine.world);
+    all.forEach(b => { if(!b.isStatic) World.remove(engine.world, b); });
+
+    dyingBodies = []; destroyedCount = 0;
+    ammo = 8 + level;
+    updateUI();
+
+    const buildingX = W * 0.75;
+    const bW = 34, bH = 34;
+    const colors = ['#B5EAD7', '#FFDAC1', '#E2F0CB', '#C7CEEA', '#FFB7B2'];
+    
+    // 建立積木塔：降低摩擦力讓它們好推一點
+    let rows = 4 + level; if(rows > 12) rows = 12;
+    let cols = level === 1 ? 1 : 2;
+
+    for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) {
+            let x = buildingX - ((cols-1)*bW/2) + (c*(bW+2));
+            let y = (H - groundH) - (bH/2) - (r*(bH+1));
+            let box = Bodies.rectangle(x, y, bW, bH, {
+                restitution: 0.1, 
+                friction: 0.4, // 降低摩擦力，積木會更好推
+                frictionStatic: 0.6,
+                render: { fillStyle: colors[Math.floor(Math.random()*colors.length)] }
+            });
+            box.isBlock = true;
+            World.add(engine.world, box);
+        }
+    }
+    totalBlocks = Composite.allBodies(engine.world).filter(b => b.isBlock).length;
 }
 
 function updateUI() {
-    document.getElementById('lv-ui').innerText = level;
-    document.getElementById('am-ui').innerText = ammo;
-    document.getElementById('progress-fill').style.width = (destroyedCount/totalBlocks*100)+'%';
+    document.getElementById('ui-lv').innerText = level;
+    document.getElementById('ui-am').innerText = ammo;
 }
-function changeWp(t, b) {
+function updateProgress() {
+    document.getElementById('progress-bar').style.width = (destroyedCount/totalBlocks*100)+'%';
+}
+function setWp(t, b) {
     weapon = t;
-    document.querySelectorAll('.btn').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.weapon-btn').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
 }
 function checkEnd(win) {
-    if(!document.getElementById('overlay').classList.contains('hidden')) return;
+    if(!document.getElementById('msg-overlay').classList.contains('hidden')) return;
     if(win) {
-        showM("拆除成功！", "這一座樂園已被瓦解。", level < 15 ? "下一關" : "重頭開始");
-        level = level < 15 ? level + 1 : 1;
+        showM("拆除成功！", "建築瓦解，清爽無比。", "下一關");
+        level++;
     } else {
         showM("再接再厲", "結構尚未完全崩塌。", "重新挑戰");
     }
@@ -347,21 +386,20 @@ function checkEnd(win) {
 function showM(t, d, b) {
     document.getElementById('m-title').innerText = t;
     document.getElementById('m-desc').innerText = d;
-    document.querySelector('.start-btn').innerText = b;
-    document.getElementById('overlay').classList.remove('hidden');
+    document.querySelector('.btn-start').innerText = b;
+    document.getElementById('msg-overlay').classList.remove('hidden');
 }
 function spawnParticles(x, y, color) {
-    for(let i=0; i<15; i++) particles.push({x, y, vx:(Math.random()-0.5)*12, vy:(Math.random()-0.5)*12, life:1, color});
+    for(let i=0; i<15; i++) particles.push({x, y, vx:(Math.random()-0.5)*15, vy:(Math.random()-0.5)*15, life:1, color});
 }
 function updateParticles() {
     for(let i=particles.length-1; i>=0; i--) {
-        let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+        let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.02;
         if(p.life <= 0) particles.splice(i, 1);
         else { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
 }
-function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
 window.onload = init;
 </script>
